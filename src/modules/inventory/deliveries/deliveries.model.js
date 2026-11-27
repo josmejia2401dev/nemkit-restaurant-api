@@ -1,0 +1,64 @@
+'use strict';
+
+const { mongoose, applyPlatformSchema } = require('nemkit');
+const { DELIVERY_STATUSES, DELIVERY_STATUS } = require('../inventory.constants');
+
+const DeliveryItemSchema = new mongoose.Schema({
+  productId: { type: Number, required: true, min: 1 },
+  sku: { type: String, required: true },
+  name: { type: String, required: true },
+  quantity: { type: Number, required: true, min: 1, validate: Number.isInteger },
+  unitPrice: { type: Number, required: true, min: 0 },
+  lineTotal: { type: Number, required: true, min: 0 },
+}, { _id: false });
+
+const DeliverySchema = applyPlatformSchema({
+  userId: { type: Number, required: true, index: true },
+  // ¿El pedido pasa por cocina? (restaurante). Si es true, el domiciliario solo
+  // puede recogerlo cuando la cocina lo marque "listo" (ready). En tienda (false)
+  // puede recogerlo desde el inicio.
+  fromKitchen: { type: Boolean, default: false },
+  // Venta asociada (opcional; en esta fase la gestión logística es independiente).
+  saleId: { type: Number, default: null, index: true },
+  customerId: { type: Number, required: true, min: 1, index: true },
+  customerSnapshot: {
+    name: { type: String, required: true },
+    phone: { type: String, default: '' },
+  },
+  address: { type: String, required: true, trim: true, maxlength: 300 },
+  location: {
+    lat: { type: Number, default: null },
+    lng: { type: Number, default: null },
+  },
+  items: { type: [DeliveryItemSchema], required: true },
+  total: { type: Number, required: true, min: 0 },
+  notes: { type: String, trim: true, default: '', maxlength: 1000 },
+
+  status: { type: String, enum: DELIVERY_STATUSES, default: DELIVERY_STATUS.PENDING, index: true },
+
+  // Domiciliario asignado (empleado rol courier).
+  courierId: { type: Number, default: null, index: true },
+  courierSnapshot: { name: { type: String, default: '' } },
+
+  // Hitos de negocio (distintos de createdAt/updatedAt de auditoría).
+  timeline: {
+    readyAt: { type: Date, default: null },      // cocina marcó listo para recoger
+    pickedUpAt: { type: Date, default: null },   // el domiciliario lo recogió
+    dispatchedAt: { type: Date, default: null }, // salió en ruta
+    deliveredAt: { type: Date, default: null },
+    cancelledAt: { type: Date, default: null },
+  },
+
+  // Evidencia de entrega (opcional).
+  proof: {
+    photo: { url: { type: String, default: '', maxlength: 2048 }, storageKey: { type: String, default: '', maxlength: 512 } },
+    signature: { url: { type: String, default: '', maxlength: 2048 }, storageKey: { type: String, default: '', maxlength: 512 } },
+    observation: { type: String, trim: true, default: '', maxlength: 1000 },
+  },
+});
+
+DeliverySchema.index({ userId: 1, status: 1, createdAt: -1 });
+DeliverySchema.index({ userId: 1, courierId: 1, status: 1 });
+DeliverySchema.index({ userId: 1, customerId: 1, createdAt: -1 });
+
+module.exports = mongoose.model('inventory_deliveries', DeliverySchema);
