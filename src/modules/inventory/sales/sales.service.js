@@ -102,64 +102,6 @@ class SalesService extends InventoryDocumentService {
   }
 
   /**
-   * Crea la venta de un Plan separe sin volver a descontar stock: el stock ya
-   * salió al reservar el producto. Se registra una sola vez por layaway.
-   */
-  async createFromLayaway({ layaway, customer, userId, date, paid, session, delivery = null }) {
-    const existing = await this.repository.findByLayawayInSession(userId, layaway._id, session);
-    if (existing) return existing;
-
-    const saleId = UniqueNumberUtil.generateRaw();
-    const saleData = {
-      _id: saleId,
-      userId,
-      customerId: layaway.customerId,
-      customerSnapshot: layaway.customerSnapshot,
-      date,
-      status: DOCUMENT_STATUS.COMPLETED,
-      orderStatus: ORDER_STATUS.DELIVERED,
-      orderChannel: layaway.handoverMode === 'delivery' ? 'delivery' : 'on_site',
-      paymentStatus: paid ? PAYMENT_STATUS.PAID : PAYMENT_STATUS.PENDING,
-      paidAt: paid ? date : null,
-      items: layaway.items.map((item) => ({ ...item })),
-      total: layaway.total,
-      movementId: layaway.reservationMovementId,
-      layawayId: layaway._id,
-      settledByLayaway: true,
-      handoverMode: layaway.handoverMode,
-      notes: layaway.notes ?? '',
-      createdBy: userId,
-      updatedBy: userId,
-    };
-
-    const [sale] = await this.repository.model.create([saleData], { session });
-
-    if (customer) {
-      const { recordCustomerPurchase } = this.#getStatisticsOperations();
-      await recordCustomerPurchase(customer, layaway.total, date, userId, session);
-    }
-
-    if (delivery && layaway.handoverMode === 'delivery') {
-      await createDeliveryForSale({
-        document: sale,
-        delivery,
-        contact: customer,
-        items: sale.items,
-        fromKitchen: false,
-        userId,
-        session,
-      });
-    }
-
-    return this.repository.normalizeOutput(sale);
-  }
-
-  /** Marca como pagada la venta de un Plan separe al completar el saldo. */
-  markLayawaySalePaid(saleId, userId, paidAt, session) {
-    return this.repository.markLayawaySalePaidInSession(saleId, userId, paidAt, session);
-  }
-
-  /**
    * Anula una venta: repone el stock, registra un movimiento de reversa,
    * marca la venta como anulada y revierte las métricas del cliente. Todo en
    * una transacción. Idempotente frente a ventas ya anuladas.

@@ -181,8 +181,6 @@ class ReportsService {
       purchases = [],
       payments = [],
       withdrawals = [],
-      layawayPayments = [],
-      layawayRefunds = [],
     ] = await buildCashFlow(
       this.models,
       userId,
@@ -195,20 +193,16 @@ class ReportsService {
     const paymentsTotal = roundMoney(payments[0]?.total ?? 0);
     const withdrawalTotals = withdrawals[0]?.totals?.[0] ?? { count: 0, total: 0 };
     const withdrawalsTotal = roundMoney(withdrawalTotals.total);
-    const layawayPaymentsTotal = roundMoney(layawayPayments[0]?.total ?? 0);
-    const layawayRefundsTotal = roundMoney(layawayRefunds[0]?.total ?? 0);
     const outflowsTotal = roundMoney(
-      purchasesTotal + paymentsTotal + withdrawalsTotal + layawayRefundsTotal,
+      purchasesTotal + paymentsTotal + withdrawalsTotal,
     );
-    const inflowsTotal = roundMoney(salesTotal + layawayPaymentsTotal);
+    const inflowsTotal = roundMoney(salesTotal);
 
     return {
       range: { from: query.from, to: query.to },
       inflows: {
         sales: salesTotal,
         salesCount: sales[0]?.count ?? 0,
-        layawayPayments: layawayPaymentsTotal,
-        layawayPaymentsCount: layawayPayments[0]?.count ?? 0,
         total: inflowsTotal,
       },
       outflows: {
@@ -218,8 +212,6 @@ class ReportsService {
         employeePaymentsCount: payments[0]?.count ?? 0,
         withdrawals: withdrawalsTotal,
         withdrawalsCount: withdrawalTotals.count,
-        layawayRefunds: layawayRefundsTotal,
-        layawayRefundsCount: layawayRefunds[0]?.count ?? 0,
         total: outflowsTotal,
       },
       net: roundMoney(inflowsTotal - outflowsTotal),

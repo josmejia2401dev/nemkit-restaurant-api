@@ -46,10 +46,6 @@ const SaleSchema = applyPlatformSchema({
   // Estado de cobro: paid (mostrador o cobro registrado) o pending (restaurante/domicilio).
   paymentStatus: { type: String, enum: ['paid', 'pending'], default: 'paid', index: true },
   paidAt: { type: Date, default: null },
-  // Plan separe que originó la venta. Los abonos ya entraron a caja, así que
-  // `settledByLayaway` excluye esta venta del flujo de caja.
-  layawayId: { type: Number, default: null, index: true },
-  settledByLayaway: { type: Boolean, default: false, index: true },
   handoverMode: { type: String, enum: ['pickup', 'delivery', 'immediate'], default: null },
   notes: { type: String, trim: true, default: '', maxlength: 1000 },
   items: { type: [SaleItemSchema], required: true },
