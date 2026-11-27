@@ -15,6 +15,7 @@ foundation = createFoundation({
   logger,
   plans: PLANS,
   productName: 'Nemkit Restaurant',
+  emailVerification: true,
   notifier,
   counters: {
     employees: (userId) => foundation.models.Employee.countDocuments({
